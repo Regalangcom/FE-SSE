@@ -27,31 +27,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // SSE Connection
-  const { isConnected: isSSEConnected } = useSSE({
-    enabled: !!user,
-    onNotification: (notification) => {
-      console.log("🔔 New notification via SSE:", notification);
-
-      // Add to list
-      setNotifications((prev) => [notification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-
-      // Show browser notification
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(notification.title, {
-          body: notification.message,
-          icon: "/notification-icon.png",
-        });
-      }
-    },
-    onConnected: () => {
-      console.log("✅ SSE Connected, fetching notifications...");
-      // 🔥 Fetch notifications saat connect
-      fetchNotifications();
-    },
-  });
-
   // 🔥 Fetch notifications when user logs in/registers
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -81,7 +56,30 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user]);
+
+  // SSE Connection
+  const { isConnected: isSSEConnected } = useSSE({
+    enabled: !!user,
+    onNotification: (notification) => {
+      console.log("🔔 New notification via SSE:", notification);
+
+      // Add to list
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+
+      // Show browser notification
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(notification.title, {
+          body: notification.message,
+          icon: "/notification-icon.png",
+        });
+      }
+    },
+    onConnected: () => {
+      console.log("✅ SSE Connected");
+    },
+  });
 
   const markAsRead = async (id: string) => {
     try {
@@ -139,8 +137,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("👤 User logged out, clearing notifications");
       setNotifications([]);
       setUnreadCount(0);
+      setLoading(false);
     }
-  }, [user, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   return (
     <NotificationContext.Provider
@@ -161,3 +161,4 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 };
 
 export { NotificationContext };
+export default NotificationContext;
