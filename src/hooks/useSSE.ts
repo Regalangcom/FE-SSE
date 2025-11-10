@@ -24,7 +24,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
       return;
     }
 
-    const connect = () => {
+    const connect = async () => {
       // 🔥 Prevent multiple simultaneous connections
       if (eventSourceRef.current || isConnectingRef.current) {
         console.log("[SSE] Already connected or connecting, skipping...");
@@ -33,11 +33,16 @@ export const useSSE = (options: UseSSEOptions = {}) => {
 
       isConnectingRef.current = true;
 
+      // 🔥 Small delay to ensure cookies are set after login
+      console.log("[SSE] ⏳ Waiting 100ms for auth cookies to be set...");
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const apiUrl =
         import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
       const url = `${apiUrl}/sse/connect`;
 
       console.log("[SSE] 🔌 Connecting to:", url);
+      console.log("[SSE] 🍪 withCredentials: true (cookies will be sent)");
 
       try {
         const eventSource = new EventSource(url, {
@@ -45,7 +50,11 @@ export const useSSE = (options: UseSSEOptions = {}) => {
         });
 
         eventSource.onopen = () => {
-          console.log("[SSE] ✅ Connected");
+          console.log("[SSE] ✅ Connected successfully");
+          console.log("[SSE] ℹ️ If backend shows 'userId: undefined', check:");
+          console.log("[SSE] 1. Backend SSE handler reads cookies correctly");
+          console.log("[SSE] 2. Cookie httpOnly/secure/sameSite settings");
+          console.log("[SSE] 3. CORS credentials configuration");
           setIsConnected(true);
           setError(null);
           isConnectingRef.current = false;

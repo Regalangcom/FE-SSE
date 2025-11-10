@@ -54,10 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     try {
+      console.log("🔐 Attempting login...");
       const response = await apiService.login({ email, password });
 
       if (response.success && response.data) {
         console.log("✅ Login successful:", response.data.user.email);
+        console.log("🍪 Auth cookies should now be set by backend");
+        console.log("👤 User ID:", response.data.user.id);
         setUser(response.data.user);
       }
     } catch (error) {
@@ -68,10 +71,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const register = async (name: string, email: string, password: string) => {
     try {
+      console.log("📝 Attempting registration...");
       const response = await apiService.register({ name, email, password });
 
       if (response.success && response.data) {
         console.log("✅ Registration successful:", response.data.user.email);
+        console.log("🍪 Auth cookies should now be set by backend");
+        console.log("👤 User ID:", response.data.user.id);
         setUser(response.data.user);
       }
     } catch (error) {
