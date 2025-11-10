@@ -162,7 +162,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  }, [user?.id, extractCount, extractNotifications]);
+  }, [user, extractCount, extractNotifications]);
 
   const markAsRead = async (id: string) => {
     try {
