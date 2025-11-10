@@ -81,7 +81,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -139,8 +139,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("👤 User logged out, clearing notifications");
       setNotifications([]);
       setUnreadCount(0);
+      setLoading(false);
     }
-  }, [user, fetchNotifications]);
+  }, [user?.id, fetchNotifications]);
 
   return (
     <NotificationContext.Provider
