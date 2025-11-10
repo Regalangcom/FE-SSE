@@ -18,9 +18,37 @@ export const useSSE = (options: UseSSEOptions = {}) => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 🔥 Cleanup function to disconnect SSE (can be called manually)
+  const cleanup = () => {
+    console.log("[SSE] 🧹 Cleaning up...");
+
+    // Clear reconnect timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    // Close EventSource
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    isConnectingRef.current = false;
+    setIsConnected(false);
+    setError(null);
+  };
+
   useEffect(() => {
-    // 🔥 Guard: Don't connect if disabled or already connecting
-    if (!enabled || isConnectingRef.current) {
+
+    // 🔥 If disabled, cleanup and return early
+    if (!enabled) {
+      cleanup();
+      return;
+    }
+
+    // 🔥 Guard: Don't connect if already connecting
+    if (isConnectingRef.current) {
       return;
     }
 
@@ -103,29 +131,13 @@ export const useSSE = (options: UseSSEOptions = {}) => {
     // Initial connection
     connect();
 
-    // Cleanup function
-    return () => {
-      console.log("[SSE] 🧹 Cleaning up...");
-
-      // Clear reconnect timeout
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-
-      // Close EventSource
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-
-      isConnectingRef.current = false;
-      setIsConnected(false);
-    };
+    // Cleanup on unmount or when enabled changes
+    return cleanup;
   }, [enabled]); // 🔥 Only depend on 'enabled', not callbacks
 
   return {
     isConnected,
     error,
+    disconnect: cleanup, // 🔥 Expose disconnect method for manual cleanup (e.g., on logout)
   };
 };

@@ -28,9 +28,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // SSE Connection
-  // SSE Connection
-  const { isConnected: isSSEConnected } = useSSE({
+  // SSE Connection - disconnect automatically when user logs out
+  const { isConnected: isSSEConnected, disconnect: disconnectSSE } = useSSE({
     enabled: !!user,
     onNotification: (notification) => {
       console.log("🔔 New notification via SSE:", notification);
@@ -217,11 +216,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("👤 User authenticated, fetching notifications...");
       fetchNotifications();
     } else {
-      console.log("👤 User logged out, clearing notifications");
+      console.log("👤 User logged out, clearing notifications and disconnecting SSE");
       setNotifications([]);
       setUnreadCount(0);
+      // 🔥 Explicitly disconnect SSE on logout for extra safety
+      disconnectSSE();
     }
-  }, [user, fetchNotifications]);
+  }, [user, fetchNotifications, disconnectSSE]);
 
   return (
     <NotificationContext.Provider
