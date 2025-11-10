@@ -15,9 +15,9 @@ interface NotificationContextType {
   isSSEConnected: boolean;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(
-  undefined
-);
+export const NotificationContext = createContext<
+  NotificationContextType | undefined
+>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -27,34 +27,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // SSE Connection
-  const { isConnected: isSSEConnected } = useSSE({
-    enabled: !!user,
-    onNotification: (notification) => {
-      console.log("🔔 New notification via SSE:", notification);
-
-      // Add to list
-      setNotifications((prev) => [notification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-
-      // Show browser notification
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(notification.title, {
-          body: notification.message,
-          icon: "/notification-icon.png",
-        });
-      }
-    },
-    onConnected: () => {
-      console.log("✅ SSE Connected, fetching notifications...");
-      // 🔥 Fetch notifications saat connect
-      fetchNotifications();
-    },
-  });
-
   // 🔥 Fetch notifications when user logs in/registers
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -82,6 +59,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   }, [user?.id]);
+
+  // SSE Connection
+  const { isConnected: isSSEConnected } = useSSE({
+    enabled: !!user,
+    onNotification: (notification) => {
+      console.log("🔔 New notification via SSE:", notification);
+
+      // Add to list
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+
+      // Show browser notification
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(notification.title, {
+          body: notification.message,
+          icon: "/notification-icon.png",
+        });
+      }
+    },
+    onConnected: () => {
+      console.log("✅ SSE Connected, fetching notifications...");
+      // 🔥 Fetch notifications saat connect
+      fetchNotifications();
+    },
+  });
 
   const markAsRead = async (id: string) => {
     try {
@@ -139,6 +141,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("👤 User logged out, clearing notifications");
       setNotifications([]);
       setUnreadCount(0);
+      setLoading(false);
     }
   }, [user, fetchNotifications]);
 
@@ -159,5 +162,3 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     </NotificationContext.Provider>
   );
 };
-
-export { NotificationContext };
