@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Header } from "../components/header";
 import { useAuth } from "../hooks/useAuth";
 import { useNotifications } from "../hooks/useNotification";
@@ -15,7 +15,8 @@ import { formatDistanceToNow } from "date-fns";
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const { notifications, unreadCount, isSSEConnected } = useNotifications();
+  const { notifications, unreadCount, isSSEConnected, fetchNotifications } =
+    useNotifications();
   const [isSendingTest, setIsSendingTest] = useState(false);
 
   const handleSendTestNotification = async () => {
@@ -29,6 +30,10 @@ export const DashboardPage: React.FC = () => {
       setIsSendingTest(false);
     }
   };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [notifications]);
 
   const recentNotifications = notifications.slice(0, 5);
 

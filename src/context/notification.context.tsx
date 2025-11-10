@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect, useCallback } from "react";
 import type { Notification } from "../types";
 import { apiService } from "../service/api.service";
@@ -15,9 +16,9 @@ interface NotificationContextType {
   isSSEConnected: boolean;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(
-  undefined
-);
+export const NotificationContext = createContext<
+  NotificationContextType | undefined
+>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -27,6 +28,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // SSE Connection
   // SSE Connection
   const { isConnected: isSSEConnected } = useSSE({
     enabled: !!user,
@@ -46,11 +48,83 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     },
     onConnected: () => {
-      console.log("✅ SSE Connected, fetching notifications...");
-      // 🔥 Fetch notifications saat connect
-      fetchNotifications();
+      console.log("✅ SSE Connected");
     },
   });
+  const normalizeNotifications = useCallback((items: any[]): Notification[] => {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+
+    return items
+      .map((item) => {
+        const fallbackId =
+          item?.id ??
+          item?._id ??
+          item?.notificationId ??
+          `${item?.userId ?? "notification"}-${
+            item?.createdAt ?? globalThis.crypto?.randomUUID?.() ?? Date.now()
+          }`;
+
+        return {
+          ...item,
+          id: String(fallbackId),
+          priority: item?.priority ?? "NORMAL",
+          isRead: Boolean(item?.isRead),
+          sentViaSSE: Boolean(item?.sentViaSSE),
+        } as Notification;
+      })
+      .filter(Boolean);
+  }, []);
+
+  const extractNotifications = useCallback(
+    (response: any): Notification[] => {
+      if (!response) {
+        return [];
+      }
+
+      if (Array.isArray(response)) {
+        return normalizeNotifications(response);
+      }
+
+      if (Array.isArray(response.notifications)) {
+        return normalizeNotifications(response.notifications);
+      }
+
+      if (response.data) {
+        if (Array.isArray(response.data.notifications)) {
+          return normalizeNotifications(response.data.notifications);
+        }
+
+        if (Array.isArray(response.data)) {
+          return normalizeNotifications(response.data);
+        }
+      }
+
+      return [];
+    },
+    [normalizeNotifications]
+  );
+
+  const extractCount = useCallback((response: any): number => {
+    if (!response) {
+      return 0;
+    }
+
+    if (typeof response === "number") {
+      return response;
+    }
+
+    if (typeof response.count === "number") {
+      return response.count;
+    }
+
+    if (response.data && typeof response.data.count === "number") {
+      return response.data.count;
+    }
+
+    return 0;
+  }, []);
 
   // 🔥 Fetch notifications when user logs in/registers
   const fetchNotifications = useCallback(async () => {
@@ -65,23 +139,30 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         apiService.getUnreadCount(),
       ]);
 
-      if (notifResponse.success && notifResponse.data) {
-        setNotifications(notifResponse.data.notifications);
-        console.log(
-          `✅ Fetched ${notifResponse.data.notifications.length} notifications`
-        );
-      }
+      // if (notifResponse.success && notifResponse.data) {
+      //   setNotifications(notifResponse.data.notifications);
+      //   console.log(
+      //     `✅ Fetched ${notifResponse.data.notifications.length} notifications`
+      //   );
+      // }
+      const mappedNotifications = extractNotifications(notifResponse);
+      setNotifications(mappedNotifications);
+      console.log(`✅ Fetched ${mappedNotifications.length} notifications`);
 
-      if (countResponse.success && countResponse.data) {
-        setUnreadCount(countResponse.data.count);
-        console.log(`✅ Unread count: ${countResponse.data.count}`);
-      }
+      // if (countResponse.success && countResponse.data) {
+      //   setUnreadCount(countResponse.data.count);
+      //   console.log(`✅ Unread count: ${countResponse.data.count}`);
+      // }
+
+      const unread = extractCount(countResponse);
+      setUnreadCount(unread);
+      console.log(`✅ Unread count: ${unread}`);
     } catch (error) {
       console.error("❌ Failed to fetch notifications:", error);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, extractCount, extractNotifications]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -160,4 +241,4 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-export { NotificationContext };
+// export { NotificationContext };

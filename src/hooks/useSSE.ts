@@ -24,7 +24,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
       return;
     }
 
-    const connect = () => {
+    const connect = async () => {
       // 🔥 Prevent multiple simultaneous connections
       if (eventSourceRef.current || isConnectingRef.current) {
         console.log("[SSE] Already connected or connecting, skipping...");
@@ -32,6 +32,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
       }
 
       isConnectingRef.current = true;
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const apiUrl =
         import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
