@@ -55,6 +55,7 @@ class ApiService {
         // 🔥 Handle network errors (backend not running)
         if (!error.response) {
           console.error("🔴 Network error - Is backend running?");
+          console.error("ℹ️ Not redirecting to login (might be temporary network issue)");
           return Promise.reject(error);
         }
 
@@ -67,10 +68,10 @@ class ApiService {
 
         // 🔥 Don't retry refresh endpoint itself
         if (originalRequest.url?.includes("/refresh")) {
-          console.log("❌ Refresh token invalid, clearing session");
+          console.log("❌ Refresh token invalid or expired");
           this.isRefreshing = false;
           this.refreshAttempts = 0;
-          window.location.href = "/login";
+          // Don't redirect here - let auth context handle it
           return Promise.reject(error);
         }
 
@@ -79,7 +80,7 @@ class ApiService {
           console.error("❌ Max refresh attempts reached");
           this.isRefreshing = false;
           this.refreshAttempts = 0;
-          window.location.href = "/login";
+          // Don't redirect here - let auth context handle it
           return Promise.reject(error);
         }
 
@@ -117,14 +118,8 @@ class ApiService {
           this.isRefreshing = false;
           this.refreshAttempts = 0;
 
-          // Only redirect if we're sure the refresh failed
-          if (
-            axios.isAxiosError(refreshError) &&
-            refreshError.response?.status === 401
-          ) {
-            window.location.href = "/login";
-          }
-
+          // Don't redirect here - let auth context and ProtectedRoute handle it
+          // This prevents aggressive redirects on temporary network issues
           return Promise.reject(refreshError);
         }
       }

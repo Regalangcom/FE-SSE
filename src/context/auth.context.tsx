@@ -19,17 +19,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const hasCheckedAuth = useRef(false);
+  const isCheckingAuth = useRef(false); // 🔥 Prevent concurrent checks
 
   useEffect(() => {
-    if (!hasCheckedAuth.current) {
+    // 🔥 Prevent double check in StrictMode or concurrent calls
+    if (!hasCheckedAuth.current && !isCheckingAuth.current) {
       hasCheckedAuth.current = true;
-      checkAuth();
+      isCheckingAuth.current = true;
+      checkAuth().finally(() => {
+        isCheckingAuth.current = false;
+      });
     }
   }, []);
 
   const checkAuth = async () => {
     try {
       console.log("🔍 Checking authentication...");
+      console.log("🍪 Cookies will be sent with credentials");
+      
       const response = await apiService.getProfile();
 
       if (response.success && response.data) {
@@ -40,13 +47,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setUser(null);
       }
     } catch (error: any) {
-      // 🔥 Don't log 401 as error (it's expected when not logged in)
+      // 🔥 Only clear user on 401 (unauthorized)
       if (error.response?.status === 401) {
-        console.log("ℹ️ Not authenticated (expected)");
+        console.log("ℹ️ Not authenticated (401 - expected when not logged in)");
+        setUser(null);
+      } else if (!error.response) {
+        // 🔥 Network error - backend might be down, keep loading state
+        console.error("🔴 Network error - backend unreachable");
+        console.error("⚠️ Not clearing user state, backend might be temporarily down");
       } else {
-        console.error("❌ Auth check failed:", error.message);
+        // 🔥 Other errors (500, etc) - log but don't necessarily log out
+        console.error("❌ Auth check failed:", error.message, error.response?.status);
+        console.error("⚠️ Non-401 error, not clearing user state");
       }
-      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -89,12 +102,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setUser(null);
       hasCheckedAuth.current = false; // 🔥 Reset for next login
+      isCheckingAuth.current = false; // 🔥 Reset checking flag
     }
   };
 
   const refreshProfile = async () => {
+    if (isCheckingAuth.current) {
+      console.log("⏳ Already checking auth, skipping...");
+      return;
+    }
+    isCheckingAuth.current = true;
     setLoading(true);
-    await checkAuth();
+    await checkAuth().finally(() => {
+      isCheckingAuth.current = false;
+    });
   };
 
   return (
