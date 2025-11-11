@@ -28,6 +28,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const isFetchingRef = useRef(false); // 🔥 Prevent multiple simultaneous fetches
+  const userRef = useRef(user); // 🔥 Stable user reference
+
+  // Update user ref when user changes
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   // Helper functions (no dependencies, pure functions)
   const normalizeNotifications = (items: any[]): Notification[] => {
@@ -125,15 +131,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     },
   });
 
-  // 🔥 Fetch notifications - memoized with stable ref
-  const fetchNotificationsRef = useRef<(() => Promise<void>) | undefined>(undefined);
-  
-  fetchNotificationsRef.current = async () => {
-    if (!user) {
-      console.log("⚠️ No user, skipping fetch");
-      return;
-    }
-
+  // 🔥 Internal fetch logic (pure function)
+  const doFetchNotifications = async () => {
     if (isFetchingRef.current) {
       console.log("⚠️ Already fetching, skipping...");
       return;
@@ -164,9 +163,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Stable wrapper for external use
+  // Exposed API for manual refresh (stable reference)
   const fetchNotifications = useCallback(async () => {
-    await fetchNotificationsRef.current?.();
+    if (!userRef.current) {
+      console.log("⚠️ No user, skipping fetch");
+      return;
+    }
+    await doFetchNotifications();
   }, []);
 
   const markAsRead = async (id: string) => {
@@ -220,7 +223,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (user?.id) {
       console.log("👤 User authenticated, fetching notifications...");
-      fetchNotifications();
+      doFetchNotifications();
     } else if (user === null) {
       console.log("👤 User logged out, clearing notifications");
       setNotifications([]);
@@ -228,7 +231,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
       disconnectSSE?.();
     }
-  }, [user?.id, fetchNotifications, disconnectSSE]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return (
     <NotificationContext.Provider
