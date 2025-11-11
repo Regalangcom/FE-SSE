@@ -221,7 +221,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       setNotifications([]);
       setUnreadCount(0);
     }
-  }, [user, fetchNotifications]);
+  }, [user?.id, fetchNotifications]);
 
   return (
     <NotificationContext.Provider
