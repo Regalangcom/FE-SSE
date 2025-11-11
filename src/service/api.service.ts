@@ -70,7 +70,7 @@ class ApiService {
           console.log("❌ Refresh token invalid, clearing session");
           this.isRefreshing = false;
           this.refreshAttempts = 0;
-          window.location.href = "/login";
+          // window.location.href = "/login";
           return Promise.reject(error);
         }
 
@@ -79,7 +79,7 @@ class ApiService {
           console.error("❌ Max refresh attempts reached");
           this.isRefreshing = false;
           this.refreshAttempts = 0;
-          window.location.href = "/login";
+          // window.location.href = "/login";
           return Promise.reject(error);
         }
 
@@ -118,12 +118,12 @@ class ApiService {
           this.refreshAttempts = 0;
 
           // Only redirect if we're sure the refresh failed
-          if (
-            axios.isAxiosError(refreshError) &&
-            refreshError.response?.status === 401
-          ) {
-            window.location.href = "/login";
-          }
+          // if (
+          //   axios.isAxiosError(refreshError) &&
+          //   refreshError.response?.status === 401
+          // ) {
+          //   window.location.href = "/login";
+          // }
 
           return Promise.reject(refreshError);
         }
@@ -145,7 +145,7 @@ class ApiService {
 
   async logout() {
     try {
-      const response = await this.api.post<ApiResponse>("/users/logout");
+      const response = await this.api.delete<ApiResponse>("/users/logout");
       return response.data;
     } finally {
       this.refreshAttempts = 0; // Reset on logout

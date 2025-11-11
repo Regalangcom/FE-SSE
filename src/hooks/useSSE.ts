@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { SSEEvent, Notification } from "../types";
 
 interface UseSSEOptions {
@@ -12,11 +12,38 @@ export const useSSE = (options: UseSSEOptions = {}) => {
   const { onNotification, onConnected, onError, enabled = true } = options;
 
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<number | null>(null); // 🔥 Browser setTimeout returns number
-  const isConnectingRef = useRef(false); // 🔥 Prevent multiple connection attempts
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const isConnectingRef = useRef(false);
+
+  const onNotificationRef = useRef(onNotification);
+  const onConnectedRef = useRef(onConnected);
+  const onErrorRef = useRef(onError);
 
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    onNotificationRef.current = onNotification;
+    onConnectedRef.current = onConnected;
+    onErrorRef.current = onError;
+  }, [onNotification, onConnected, onError]);
+
+  const disconnect = useCallback(() => {
+    console.log("[SSE] 🔌 Manual disconnect");
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    isConnectingRef.current = false;
+    setIsConnected(false);
+  }, []);
 
   useEffect(() => {
     // 🔥 Guard: Don't connect if disabled or already connecting
@@ -50,7 +77,8 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           setIsConnected(true);
           setError(null);
           isConnectingRef.current = false;
-          onConnected?.();
+          // onConnected?.();
+          onConnectedRef.current?.();
         };
 
         eventSource.onmessage = (event) => {
@@ -59,7 +87,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
             console.log("[SSE] 📨 Message:", data.type);
 
             if (data.type === "notification" && data.data) {
-              onNotification?.(data.data);
+              onNotificationRef.current?.(data.data);
             }
           } catch (err) {
             console.error("[SSE] Parse error:", err);
@@ -73,7 +101,8 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           setError("Connection failed");
           isConnectingRef.current = false;
 
-          onError?.(event);
+          // onError?.(event);
+          onErrorRef.current?.(event);
 
           // Close current connection
           if (eventSourceRef.current) {
@@ -104,28 +133,30 @@ export const useSSE = (options: UseSSEOptions = {}) => {
     connect();
 
     // Cleanup function
-    return () => {
-      console.log("[SSE] 🧹 Cleaning up...");
+    // return () => {
+    //   console.log("[SSE] 🧹 Cleaning up...");
 
-      // Clear reconnect timeout
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
+    //   // Clear reconnect timeout
+    //   if (reconnectTimeoutRef.current) {
+    //     clearTimeout(reconnectTimeoutRef.current);
+    //     reconnectTimeoutRef.current = null;
+    //   }
 
-      // Close EventSource
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
+    //   // Close EventSource
+    //   if (eventSourceRef.current) {
+    //     eventSourceRef.current.close();
+    //     eventSourceRef.current = null;
+    //   }
 
-      isConnectingRef.current = false;
-      setIsConnected(false);
-    };
+    //   isConnectingRef.current = false;
+    //   setIsConnected(false);
+    // };
+    // return cleanup;
   }, [enabled]); // 🔥 Only depend on 'enabled', not callbacks
 
   return {
     isConnected,
     error,
+    disconnect,
   };
 };
