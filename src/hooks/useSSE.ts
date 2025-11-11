@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { SSEEvent, Notification } from "../types";
 
 interface UseSSEOptions {
@@ -14,6 +14,18 @@ export const useSSE = (options: UseSSEOptions = {}) => {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null); // 🔥 Browser setTimeout returns number
   const isConnectingRef = useRef(false); // 🔥 Prevent multiple connection attempts
+
+  // 🔥 Store callbacks in refs to avoid reconnection on callback changes
+  const onNotificationRef = useRef(onNotification);
+  const onConnectedRef = useRef(onConnected);
+  const onErrorRef = useRef(onError);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onNotificationRef.current = onNotification;
+    onConnectedRef.current = onConnected;
+    onErrorRef.current = onError;
+  }, [onNotification, onConnected, onError]);
 
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +80,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           setIsConnected(true);
           setError(null);
           isConnectingRef.current = false;
-          onConnected?.();
+          onConnectedRef.current?.();
         };
 
         eventSource.onmessage = (event) => {
@@ -77,7 +89,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
             console.log("[SSE] 📨 Message:", data.type);
 
             if (data.type === "notification" && data.data) {
-              onNotification?.(data.data);
+              onNotificationRef.current?.(data.data);
             }
           } catch (err) {
             console.error("[SSE] Parse error:", err);
@@ -91,7 +103,7 @@ export const useSSE = (options: UseSSEOptions = {}) => {
           setError("Connection failed");
           isConnectingRef.current = false;
 
-          onError?.(event);
+          onErrorRef.current?.(event);
 
           // Close current connection
           if (eventSourceRef.current) {
