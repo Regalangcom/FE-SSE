@@ -126,7 +126,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   // 🔥 Fetch notifications - memoized with stable ref
-  const fetchNotificationsRef = useRef<() => Promise<void>>();
+  const fetchNotificationsRef = useRef<(() => Promise<void>) | undefined>(undefined);
   
   fetchNotificationsRef.current = async () => {
     if (!user) {
