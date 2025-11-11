@@ -29,8 +29,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   // SSE Connection
-  // SSE Connection
-  const { isConnected: isSSEConnected } = useSSE({
+  const { isConnected: isSSEConnected, disconnect: disconnectSSE } = useSSE({
     enabled: !!user,
     onNotification: (notification) => {
       console.log("🔔 New notification via SSE:", notification);
@@ -139,20 +138,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         apiService.getUnreadCount(),
       ]);
 
-      // if (notifResponse.success && notifResponse.data) {
-      //   setNotifications(notifResponse.data.notifications);
-      //   console.log(
-      //     `✅ Fetched ${notifResponse.data.notifications.length} notifications`
-      //   );
-      // }
       const mappedNotifications = extractNotifications(notifResponse);
       setNotifications(mappedNotifications);
       console.log(`✅ Fetched ${mappedNotifications.length} notifications`);
-
-      // if (countResponse.success && countResponse.data) {
-      //   setUnreadCount(countResponse.data.count);
-      //   console.log(`✅ Unread count: ${countResponse.data.count}`);
-      // }
 
       const unread = extractCount(countResponse);
       setUnreadCount(unread);
@@ -162,7 +150,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  }, [user?.id, extractCount, extractNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -220,8 +209,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("👤 User logged out, clearing notifications");
       setNotifications([]);
       setUnreadCount(0);
+      disconnectSSE?.();
     }
-  }, [user?.id, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return (
     <NotificationContext.Provider

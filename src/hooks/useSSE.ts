@@ -18,6 +18,24 @@ export const useSSE = (options: UseSSEOptions = {}) => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Disconnect function
+  const disconnect = useCallback(() => {
+    console.log("[SSE] 🔌 Manual disconnect");
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
+    isConnectingRef.current = false;
+    setIsConnected(false);
+  }, []);
+
   useEffect(() => {
     // 🔥 Guard: Don't connect if disabled or already connecting
     if (!enabled || isConnectingRef.current) {
@@ -127,5 +145,6 @@ export const useSSE = (options: UseSSEOptions = {}) => {
   return {
     isConnected,
     error,
+    disconnect,
   };
 };
